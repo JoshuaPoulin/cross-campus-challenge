@@ -83,7 +83,7 @@ function gameOver(){
     console.log('Player wins');
   }
   if (computerPoints >= 5){
-    console.log('Computer wins')
+    console.log('Computer wins');
   }
   playerMoves = [];
   computerMoves = [];
