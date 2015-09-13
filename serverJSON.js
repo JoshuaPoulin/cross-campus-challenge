@@ -1,3 +1,55 @@
+// USAGE: node serverJSON.js <port #>
+// JSON server, this file is to be run in node only.
+// It uses the game logic copy pasta'd from web version unless someone
+// decides that the game logic can be modularized
+// route something like /api/gamestate?move=#
+
+// if we give different bots a server, they should be able to play against
+// eachother with GET requests and query strings
+
+var http = require('http');
+var url = require('url');
+
+var server = http.createServer(function (req, res) {
+  if(req.method != 'GET') {
+    res.end("Send me a GET request please.  If you would like to make a move "
+        + "please include a query string in the form /api/gamestate?move = #");
+  }
+  var urlKeys = url.parse(req.url, true);
+  var jsonResponse = {};
+  res.writeHead(200, {'Content-Type':'application/json'});
+    if (urlKeys.pathname == '/api/gamestate') {
+      console.log(urlKeys);
+      if (urlKeys.query.move != null) {
+        jsonResponse.move = urlKeys.query.move;
+        play(urlKeys.query);
+      }
+      jsonResponse.playerHand = playerMovesLeft;
+      jsonResponse.computerHand = computerMovesLeft;
+      jsonResponse.playerScore = playerPoints;
+      jsonResponse.computerScore = computerPoints;
+      jsonResponse.playerLastMove = playerMoves[playerMoves.length - 1];
+      jsonResponse.computerLastMove = computerMoves[playerMoves.length - 1];
+      jsonResponse.howto = "If you wish to make a move, "
+        + "use a query string, in the form /api/gamestate?move=#";
+      jsonResponse.lastWinner = lastWinner;
+
+      res.end(JSON.stringify(jsonResponse));
+
+  }
+  else {
+    res.writeHead(404);
+    res.end("Your request is unknown to this server.");
+  }
+})
+
+server.listen(Number(process.argv[2]));
+
+
+// game logic . . . .
+//
+
+
 var playerMoves = [],
     computerMoves = [],
     playerMovesLeft = [1,2,3,4,5,6,7,8,9,10],
@@ -5,6 +57,7 @@ var playerMoves = [],
     playerPoints = 0,
     computerPoints = 0,
     pointsToWin = 5,
+    lastWinner = "",
 
     //Algorithm weight modifiers
     // computerGets2  = the importance of trying to get a going for a move that might give the computer 2 points
@@ -18,35 +71,26 @@ var playerMoves = [],
 
 
 
-function play(){
-  var playerNum = chooseANumber();
+function play(urlMoveQuery){
+  var playerNum = numberChosen(urlMoveQuery);
   var computerNum = computerLogic();
   compare(playerNum, computerNum);
   updateMoves(playerMoves, playerMovesLeft, playerNum);
   updateMoves(computerMoves, computerMovesLeft, computerNum);
   updateScoreboard(playerNum, computerNum);
   if (playerPoints >= pointsToWin || computerPoints >= pointsToWin || playerMovesLeft.length === 0){
-    gameOver();
+
+    resetGame();
   }
-  play();
 }
 
 function updateMoves(movesSoFar, movesLeft, chosenNumber){
   movesSoFar.push(chosenNumber);
   movesLeft.splice(movesLeft.indexOf(chosenNumber), 1);
 }
-
-function chooseANumber(){
-  var playerNum = Number(prompt('Pick a number, puny human\nYour current score is ' + playerPoints + '\nThe computer\'s current score is ' + computerPoints));
-
-  if (playerMovesLeft.indexOf(playerNum) == -1) {
-    console.log('Your number is out of range');
-    chooseANumber();
-  } else {
-    return playerNum;
-  }
+function numberChosen(urlQuery) {
+  return Number(urlQuery.move);
 }
-
 
 function compare(playerNum, computerNum){
   console.log('-------------------------------------------------------')
@@ -137,9 +181,6 @@ function weightArray () {
   })
 }
 
-//console.log("***TESTING*** Weight Array Changes with each turn?");
-//console.log(weightArray());
-
 function makeRatio(opponentArray, number, comparisonFn) {
   // returns the percentage of the numbers lower than the numbers
   // in the oppponentArray as a ratio. comparisonFn is either isLt or isGt.
@@ -158,25 +199,23 @@ function isGt(a, b) {
   return (a > b);
 }
 
-function gameOver(){
+function resetGame(){
   if (playerPoints >= pointsToWin){
+    lastWinner = "Player";
     console.log('Player wins');
-<<<<<<< HEAD
-  }
-  if (computerPoints >= 5){
-    console.log('Computer wins');
-=======
   } else if (computerPoints >= pointsToWin) {
+    lastWinner = "Computer";
     console.log('Computer wins')
   } else if (playerMovesLeft.length === 0) {
+    lastWinner = "Neither";
     console.log('Tie game.')
->>>>>>> upstream/master
   }
   playerMoves = [];
   computerMoves = [];
+  playerMovesLeft = [1,2,3,4,5,6,7,8,9,10];
+  computerMovesLeft = [1,2,3,4,5,6,7,8,9,10];
   playerPoints = 0;
   computerPoints = 0;
-  return;
 }
 
 function updateScoreboard(playerNum, computerNum){
@@ -188,8 +227,9 @@ function updateScoreboard(playerNum, computerNum){
   console.log('computer moves left: ' + computerMovesLeft);
 }
 
-var playNow = confirm('Are you ready to play?');
-if (playNow == true){
-  play();
-}
+
+
+
+
+
 
